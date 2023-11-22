@@ -1,0 +1,18 @@
+﻿{
+  "schema": 1,
+  "type": "completion",
+  "description": "a function that generates study plan for the chapters",
+  "completion": {
+    "max_tokens": 2000,
+    "temperature": 0.2
+  },
+  "input": {
+    "parameters": [
+      {
+        "name": "chapters",
+        "description": "The chapters of a course for",
+        "defaultValue": ""
+      }
+    ]
+  }
+}
