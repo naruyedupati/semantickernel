@@ -1,7 +1,8 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using Microsoft.SemanticKernel;
+using Plugins;
 
-#region Using Azure OpenAI Chat Completion Service
+
 // For pre-requisites and Azure Open AI setup instructions, see https://learn.microsoft.com/en-us/azure/ai-services/openai/quickstart?tabs=command-line%2Cpython&pivots=programming-language-studio#prerequisites
 string apiKey = "";
 string deploymentName = "gpt-35-turbo";
@@ -9,25 +10,25 @@ string endpoint = "";
 
 var kernelBuilder = Kernel.CreateBuilder()
     .AddAzureOpenAIChatCompletion(deploymentName, endpoint, apiKey);
-var kernel = kernelBuilder.Build();
-#endregion Using Azure OpenAI Chat Completion Service
 
-#region Using OpenAI Chat Completion Service
-//string apiKey = "openai-api-key";
-//string model = "gpt3.5-turbo";
-
-//var kernelBuilder = new KernelBuilder().
-//    WithOpenAIChatCompletionService(model, apiKey);
-#endregion Using OpenAI Chat Completion Service
 var pluginsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Plugins/CoursePlan");
+kernelBuilder.Plugins.AddFromPromptDirectory(pluginsDirectory, "CoursePlan");
 
-var courseModulePlugin= kernel.ImportPluginFromPromptDirectory(pluginsDirectory, "CoursePlan");
+kernelBuilder.Plugins.AddFromType<DocumentPlugin>();
+var kernel = kernelBuilder.Build();
 
+
+if (!kernel.Plugins.TryGetPlugin("CoursePlan", out var courseModulePlugin))
+{
+    Console.WriteLine("CoursePlan plugin not found.");
+    return;
+}
 
 KernelArguments variables = new KernelArguments
 {
     { "topic", "OpenAI." }
 };
+
 
 var title = await kernel.InvokeAsync( courseModulePlugin["Title"],variables); 
 Console.WriteLine(title);
@@ -40,6 +41,17 @@ variables.Add("chapters", chapters.GetValue<string>());
 var studyPlan = await kernel.InvokeAsync(courseModulePlugin["Plan"], variables);
 Console.WriteLine(studyPlan);
 
-Console.ReadLine();
 
+var docFunction = kernel.Plugins.GetFunction("DocumentPlugin", "WriteToDocument");
+var filePath = await kernel.InvokeAsync(
+docFunction,
+    new() {
+        { "content", studyPlan }
+    }
+);
+
+Console.WriteLine(filePath);
+
+Console.ReadLine();
 Console.WriteLine("Press any key to exit...");
+
